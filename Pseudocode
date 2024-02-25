@@ -1,1 +1,22 @@
+Program()
+{
+  Locate the DAGGER script block 
+  Collect necessary blocks I.E Camera and turret parts
 
+  Set run speed
+}
+
+Runtime() 
+{
+  if(ARGUEMENT IS TURN CAMERA ON/OFF)
+    Switch the mode
+
+  if(CAMERA IS ENABLED)
+    Collect the targetting info from DAGGER
+    Calculate the angle between current camera direction on a plane relative to the HINGES
+    Calculate which direction the hinges have to move
+    Use PID style controls to direct the hinges and their movement towards the correct place
+  else
+    if(LAST TICK TURNED OFF)
+      Turn off the movement from the camera so the camera doesn't continue moving
+}
