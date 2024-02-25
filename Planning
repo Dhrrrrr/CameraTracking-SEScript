@@ -1,0 +1,9 @@
+This will be a camera tracker, that will use DAGGER to hoist a camera towards the target
+
+Features:
+Be able to use any form of camera configuration
+Automatically locate any existing version of DAGGER on the grid for ease of use
+Be easily toggalable and quickly changeable
+
+Minor Features:
+Configurable camera spin speed
