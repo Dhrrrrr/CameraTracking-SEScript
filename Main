@@ -1,4 +1,5 @@
         IMyTextPanel textPanel;
+        IMyProgrammableBlock DAGGER;
 
 
         OperationalControlStruct MainControls = new OperationalControlStruct();
@@ -20,6 +21,26 @@
             }
 
             textPanel = GridTerminalSystem.GetBlockWithName("Text Panel") as IMyTextPanel;
+
+            List<IMyProgrammableBlock> progBlock = new List<IMyProgrammableBlock>();
+            GridTerminalSystem.GetBlocksOfType<IMyProgrammableBlock>(progBlock);
+
+            foreach (var block in progBlock)
+            {
+                string[] splitString = block.CustomData.Split('|');
+
+                if (splitString[0] == "DAGGER")
+                {
+                    DAGGER = block;
+                    break;
+                }
+            }
+
+            if (DAGGER == null)
+            {
+                Echo("Failed to locate targetting system");
+                return;
+            }
 
             Runtime.UpdateFrequency = UpdateFrequency.Update1;
         }
@@ -48,7 +69,7 @@
             }
 
 
-            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled);
+            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + DAGGER.CustomData);
         }
 
         public struct OperationalControlStruct
