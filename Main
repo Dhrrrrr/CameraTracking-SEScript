@@ -1,1 +1,87 @@
+        IMyTextPanel textPanel;
 
+
+        OperationalControlStruct MainControls = new OperationalControlStruct();
+
+        public Program()
+        {
+            IMyMotorStator startAzimuth = GridTerminalSystem.GetBlockWithName("Azimuth Rotor") as IMyMotorStator;
+            IMyMotorStator startVertical = GridTerminalSystem.GetBlockWithName("Vertical Rotor") as IMyMotorStator;
+            IMyFunctionalBlock relativeBlock = GridTerminalSystem.GetBlockWithName("Direction Block") as IMyFunctionalBlock;
+
+            if (startAzimuth != null && startVertical != null && relativeBlock != null)
+            {
+                MainControls.Initialise(startAzimuth, startVertical, relativeBlock);
+            }
+            else
+            {
+                Echo("Missing Blocks");
+                return;
+            }
+
+            textPanel = GridTerminalSystem.GetBlockWithName("Text Panel") as IMyTextPanel;
+
+            Runtime.UpdateFrequency = UpdateFrequency.Update1;
+        }
+
+        public void Main(string argument, UpdateType updateSource)
+        {
+            switch (argument)
+            {
+                case "Switch":
+
+                    if (MainControls.enabled)
+                    {
+                        MainControls.StopMovement();
+                    }
+
+                    MainControls.enabled = !MainControls.enabled;
+
+                    break;
+
+                default:
+                    if (MainControls.enabled)
+                    {
+                        MainControls.SetSystemSpeed();
+                    }
+                    break;
+            }
+
+
+            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled);
+        }
+
+        public struct OperationalControlStruct
+        {
+            public IMyMotorStator azimuth;
+            public IMyMotorStator vertical;
+            public IMyFunctionalBlock direction;
+            public bool enabled;
+
+            public float azimuthRotation { get; set; }
+            public float verticalRotation { get; set; }
+
+            public void Initialise(IMyMotorStator azimuthIns, IMyMotorStator verticalIns, IMyFunctionalBlock directionalBlock)
+            {
+                azimuthRotation = 4;
+                verticalRotation = 0;
+
+                azimuth = azimuthIns;
+                vertical = verticalIns;
+                direction = directionalBlock;
+                enabled = false;
+            }
+            public void SetSystemSpeed()
+            {
+                azimuth.TargetVelocityRPM = azimuthRotation;
+                vertical.TargetVelocityRPM = verticalRotation;
+            }
+
+            public void StopMovement()
+            {
+                azimuthRotation = 0;
+                verticalRotation = 0;
+
+                SetSystemSpeed();
+            }
+        }
