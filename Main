@@ -4,11 +4,15 @@
 
         OperationalControlStruct MainControls = new OperationalControlStruct();
 
+        Vector3D targettingLocation;
+
         public Program()
         {
             IMyMotorStator startAzimuth = GridTerminalSystem.GetBlockWithName("Azimuth Rotor") as IMyMotorStator;
             IMyMotorStator startVertical = GridTerminalSystem.GetBlockWithName("Vertical Rotor") as IMyMotorStator;
             IMyFunctionalBlock relativeBlock = GridTerminalSystem.GetBlockWithName("Direction Block") as IMyFunctionalBlock;
+
+            targettingLocation = Vector3D.Zero;
 
             if (startAzimuth != null && startVertical != null && relativeBlock != null)
             {
@@ -47,6 +51,37 @@
 
         public void Main(string argument, UpdateType updateSource)
         {
+            string[] DAGGERMainSplit = DAGGER.CustomData.Split('|');
+
+            if (DAGGERMainSplit.Length == 2)
+            {
+                string[] DAGGERInfoSplit = DAGGERMainSplit[1].Split(',');
+
+                try
+                {
+                    string[] splitString = DAGGERInfoSplit[0].Split(':');
+
+                    if (splitString.Length == 4)
+                    {
+                        string[] secondarySplit1 = splitString[1].Split(' ');
+                        string[] secondarySplit2 = splitString[2].Split(' ');
+                        string[] secondarySplit3 = splitString[3].Split(' ');
+
+                        double x = Convert.ToDouble(secondarySplit1[0]);
+                        double y = Convert.ToDouble(secondarySplit2[0]);
+                        double z = Convert.ToDouble(secondarySplit3[0]);
+
+                        targettingLocation = new Vector3D(x, y, z);
+                    }
+                }
+                catch (Exception)
+                {
+                    return;
+                }
+            }
+
+
+
             switch (argument)
             {
                 case "Switch":
@@ -69,7 +104,7 @@
             }
 
 
-            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + DAGGER.CustomData);
+            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation);
         }
 
         public struct OperationalControlStruct
