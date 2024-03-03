@@ -51,6 +51,40 @@
 
         public void Main(string argument, UpdateType updateSource)
         {
+            ParseDAGGERInfo();
+
+            switch (argument)
+            {
+                case "Switch":
+
+                    if (MainControls.enabled)
+                    {
+                        MainControls.StopMovement();
+                    }
+
+                    MainControls.enabled = !MainControls.enabled;
+
+                    break;
+
+                default:
+                    if (MainControls.enabled)
+                    {
+                        MainControls.SetSystemSpeed();
+                    }
+                    break;
+            }
+
+            WriteTextInfo();
+        }
+
+        private void WriteTextInfo()
+        {
+            textPanel.FontColor = Color.Blue;
+            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation);
+        }
+
+        public void ParseDAGGERInfo()
+        {
             string[] DAGGERMainSplit = DAGGER.CustomData.Split('|');
 
             if (DAGGERMainSplit.Length == 2)
@@ -79,32 +113,6 @@
                     return;
                 }
             }
-
-
-
-            switch (argument)
-            {
-                case "Switch":
-
-                    if (MainControls.enabled)
-                    {
-                        MainControls.StopMovement();
-                    }
-
-                    MainControls.enabled = !MainControls.enabled;
-
-                    break;
-
-                default:
-                    if (MainControls.enabled)
-                    {
-                        MainControls.SetSystemSpeed();
-                    }
-                    break;
-            }
-
-
-            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation);
         }
 
         public struct OperationalControlStruct
