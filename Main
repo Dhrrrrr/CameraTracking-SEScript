@@ -3,14 +3,18 @@
 
 
         OperationalControlStruct MainControls = new OperationalControlStruct();
-
         Vector3D targettingLocation;
+
+        float azAngle = 0;
+        float vertAngle = 0;
+
+        bool inf = false;
 
         public Program()
         {
             IMyMotorStator startAzimuth = GridTerminalSystem.GetBlockWithName("Azimuth Rotor") as IMyMotorStator;
             IMyMotorStator startVertical = GridTerminalSystem.GetBlockWithName("Vertical Rotor") as IMyMotorStator;
-            IMyFunctionalBlock relativeBlock = GridTerminalSystem.GetBlockWithName("Direction Block") as IMyFunctionalBlock;
+            IMyCubeBlock relativeBlock = GridTerminalSystem.GetBlockWithName("Direction Block") as IMyCubeBlock;
 
             targettingLocation = Vector3D.Zero;
 
@@ -52,6 +56,7 @@
         public void Main(string argument, UpdateType updateSource)
         {
             ParseDAGGERInfo();
+            CalculateAngles();
 
             switch (argument)
             {
@@ -80,7 +85,31 @@
         private void WriteTextInfo()
         {
             textPanel.FontColor = Color.Blue;
-            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation);
+            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation + Environment.NewLine + "Az: " + azAngle + ", Ver: " + vertAngle);
+        }
+
+        private void CalculateAngles()
+        {
+            Vector3D forward = MainControls.direction.WorldMatrix.Forward;
+            Vector3D left = MainControls.direction.WorldMatrix.Left;
+            Vector3D down = MainControls.direction.WorldMatrix.Down;
+
+
+
+            if (targettingLocation != null)
+            {
+                Vector3D direction = targettingLocation - MainControls.azimuth.WorldMatrix.Translation;
+
+                Vector3D xzVec = ProjectVectorToPlane(forward, left, direction);
+                Vector3D xyVec = ProjectVectorToPlane(forward, down, direction);
+
+                Vector3D a = MainControls.vertical.WorldMatrix.Forward;
+
+                float mainAzAngle = CalcAngleBetweenVec(a, forward);
+                float mainVerAngle = CalcAngleBetweenVec(xyVec, forward);
+
+                azAngle = mainAzAngle;
+            }
         }
 
         public void ParseDAGGERInfo()
@@ -119,13 +148,13 @@
         {
             public IMyMotorStator azimuth;
             public IMyMotorStator vertical;
-            public IMyFunctionalBlock direction;
+            public IMyCubeBlock direction;
             public bool enabled;
 
             public float azimuthRotation { get; set; }
             public float verticalRotation { get; set; }
 
-            public void Initialise(IMyMotorStator azimuthIns, IMyMotorStator verticalIns, IMyFunctionalBlock directionalBlock)
+            public void Initialise(IMyMotorStator azimuthIns, IMyMotorStator verticalIns, IMyCubeBlock directionalBlock)
             {
                 azimuthRotation = 4;
                 verticalRotation = 0;
@@ -148,4 +177,17 @@
 
                 SetSystemSpeed();
             }
+        }
+
+        public float CalcAngleBetweenVec(Vector3D a, Vector3D b)
+        {
+            return (float)MathHelper.ToDegrees(Math.Acos(MathHelper.Clamp(a.Dot(b) / Math.Sqrt(a.LengthSquared() * b.LengthSquared()), -1, 1)));
+        }
+
+        public Vector3D ProjectVectorToPlane(Vector3D x, Vector3D y, Vector3D projectedVector)
+        {
+            Vector3D xVec = Vector3D.ProjectOnVector(ref projectedVector, ref x);
+            Vector3D yVec = Vector3D.ProjectOnVector(ref projectedVector, ref y);
+
+            return xVec + yVec;
         }
