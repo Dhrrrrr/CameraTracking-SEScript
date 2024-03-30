@@ -85,31 +85,80 @@
         private void WriteTextInfo()
         {
             textPanel.FontColor = Color.Blue;
-            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation + Environment.NewLine + "Az: " + azAngle + ", Ver: " + vertAngle);
+            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation + Environment.NewLine + "Az: " + azAngle + ", Ver: " + vertAngle + ", " + inf);
         }
 
         private void CalculateAngles()
         {
-            Vector3D forward = MainControls.direction.WorldMatrix.Forward;
-            Vector3D left = MainControls.direction.WorldMatrix.Left;
-            Vector3D down = MainControls.direction.WorldMatrix.Down;
-
-
-
             if (targettingLocation != null)
             {
                 Vector3D direction = targettingLocation - MainControls.azimuth.WorldMatrix.Translation;
 
-                Vector3D xzVec = ProjectVectorToPlane(forward, left, direction);
-                Vector3D xyVec = ProjectVectorToPlane(forward, down, direction);
+                azAngle = CalculateDegreeDistance(MainControls.azimuth, direction);
+                vertAngle = CalculateDegreeDistance(MainControls.vertical, direction);
 
-                Vector3D a = MainControls.vertical.WorldMatrix.Forward;
-
-                float mainAzAngle = CalcAngleBetweenVec(a, forward);
-                float mainVerAngle = CalcAngleBetweenVec(xyVec, forward);
-
-                azAngle = mainAzAngle;
             }
+        }
+
+        private float CalculateDegreeDistance(IMyMotorStator rotor, Vector3D direction)
+        {
+            Vector3D left = rotor.WorldMatrix.Left;
+            Vector3D forward = rotor.WorldMatrix.Forward;
+
+            bool isHinge = false;
+          
+            if (rotor.BlockDefinition.SubtypeName == "LargeHinge" || rotor.BlockDefinition.SubtypeName == "MediumHinge" || rotor.BlockDefinition.SubtypeName == "SmallHinge")
+            {
+                isHinge = true;
+            }
+            
+
+            Vector3D planeProjection = ProjectVectorToPlane(forward, left, direction);
+
+            float angle;
+            float currAngle = ConvertRotorDegrees(rotor.Angle);
+
+            if (isHinge)
+            {
+                angle = CalcAngleBetweenVec(planeProjection, left);
+
+                if (left.Dot(planeProjection) < 0)
+                {
+                    angle *= -1;
+                }
+            }
+            else
+            {
+                Vector3D back = rotor.WorldMatrix.Backward;
+
+                angle = CalcAngleBetweenVec(planeProjection, back);
+
+                if (left.Dot(planeProjection) < 0)
+                {
+                    angle *= -1;
+                }
+            }
+
+            float returnAngle = Math.Abs(angle - currAngle);
+
+            if (angle < currAngle)
+            {
+                returnAngle *= -1;
+            }
+
+            return returnAngle;
+        }
+
+        private float ConvertRotorDegrees(float angle)
+        {
+            angle = MathHelper.ToDegrees(angle);
+
+            if (angle > 180)
+            {
+                angle -= 360;
+            }
+
+            return angle;
         }
 
         public void ParseDAGGERInfo()
