@@ -6,7 +6,7 @@ Automatically locate any existing version of DAGGER on the grid for ease of use
 Be easily toggalable and quickly changeable
 
 Minor Features:
-Configurable camera spin speed
+#Configurable camera spin speed
 
 Progress:
 #Automatic connection to DAGGER to collect its fire control information
