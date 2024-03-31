@@ -1,24 +1,22 @@
         // PID Controls
-        const float proportionalGain = 0.5f;
-        const float integralGain = 0;
-        const float derivativeGain = 4;
+        const float proportionalGain = 5f;
+        const float integralGain = 0.2f;
+        const float derivativeGain = 2f;
 
-        const float intergralAntiWindupVal = 10;
+        const float intergralAntiWindupVal = 1;
         
 
         IMyTextPanel textPanel;
         IMyProgrammableBlock DAGGER;
 
-
+        // Control structs
         OperationalControlStruct MainControls = new OperationalControlStruct();
         Vector3D targettingLocation;
-
-        float azSpeed = 0;
-        float verSpeed = 0;
 
         float azAngle = 0;
         float vertAngle = 0;
 
+        // Angles for PID Controls
         float prevAzAngle, prevVertAngle, avgAzAngle, avgVerAngle = 0;
         long angleAzCount, angleVerCount = 0;
  
@@ -27,12 +25,15 @@
 
         public Program()
         {
+            // Collect Relevant block
             IMyMotorStator startAzimuth = GridTerminalSystem.GetBlockWithName("Azimuth Rotor") as IMyMotorStator;
             IMyMotorStator startVertical = GridTerminalSystem.GetBlockWithName("Vertical Rotor") as IMyMotorStator;
             IMyCubeBlock relativeBlock = GridTerminalSystem.GetBlockWithName("Direction Block") as IMyCubeBlock;
 
+            // Nullify start location
             targettingLocation = Vector3D.Zero;
 
+            // Check all blocks are collected
             if (startAzimuth != null && startVertical != null && relativeBlock != null)
             {
                 MainControls.Initialise(startAzimuth, startVertical, relativeBlock);
@@ -45,6 +46,7 @@
 
             textPanel = GridTerminalSystem.GetBlockWithName("Text Panel") as IMyTextPanel;
 
+            // Collect targetting system
             List<IMyProgrammableBlock> progBlock = new List<IMyProgrammableBlock>();
             GridTerminalSystem.GetBlocksOfType<IMyProgrammableBlock>(progBlock);
 
@@ -70,12 +72,15 @@
 
         public void Main(string argument, UpdateType updateSource)
         {
+            // Get info from targetting system
             ParseDAGGERInfo();
 
+            // Take input from user
             switch (argument)
             {
                 case "Switch":
 
+                    // Disable movement if disabling the cam
                     if (MainControls.enabled)
                     {
                         ClearMovementInfo();
@@ -89,6 +94,7 @@
                 default:
                     if (MainControls.enabled)
                     {
+                        // Process and set movement if enabled
                         CalculateAngles();
                         CalculateMotorPID();
                         MainControls.SetSystemSpeed();
@@ -99,14 +105,22 @@
             WriteTextInfo();
         }
 
+        /// <summary>
+        /// Writes relevant info into the text panel
+        /// </summary>
         private void WriteTextInfo()
         {
+            // Write info into text panel
             textPanel.FontColor = Color.Blue;
-            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation + Environment.NewLine + "Az: " + azSpeed + ", Ver: " + verSpeed + ", " + inf);
+            textPanel.WriteText("Current Azimuth Speed: " + MainControls.azimuthRotation + ", Current Vertical Speed: " + MainControls.verticalRotation + ", Enabled: " + MainControls.enabled + Environment.NewLine + "Target Position: " + targettingLocation);
         }
 
+        /// <summary>
+        /// Calculate the angle difference that the rotors need to move
+        /// </summary>
         private void CalculateAngles()
         {
+            // Check if target is null
             if (targettingLocation != null)
             {
                 Vector3D direction = targettingLocation - MainControls.azimuth.WorldMatrix.Translation;
@@ -117,11 +131,19 @@
             }
         }
 
+        /// <summary>
+        /// Works out the rotors distance from the direction, with negative and positive for which way
+        /// </summary>
+        /// <param name="rotor">Rotor to check</param>
+        /// <param name="direction">Vector of direction to check</param>
+        /// <returns></returns>
         private float CalculateDegreeDistance(IMyMotorStator rotor, Vector3D direction)
         {
+            // Get rotation directs
             Vector3D left = rotor.WorldMatrix.Left;
             Vector3D forward = rotor.WorldMatrix.Forward;
 
+            // Check if the object is a hinge
             bool isHinge = false;
           
             if (rotor.BlockDefinition.SubtypeName == "LargeHinge" || rotor.BlockDefinition.SubtypeName == "MediumHinge" || rotor.BlockDefinition.SubtypeName == "SmallHinge")
@@ -130,11 +152,14 @@
             }
             
 
+            // Project the direction on the rotors movement plane
             Vector3D planeProjection = ProjectVectorToPlane(forward, left, direction);
 
             float angle;
             float currAngle = ConvertRotorDegrees(rotor.Angle);
 
+            // Check if the object is a hinge, as they have different rotation matrixs and thus different results
+            // Actual use is to get the angle, and convert it into an angle that can be more easily used for calculating distance
             if (isHinge)
             {
                 angle = CalcAngleBetweenVec(planeProjection, left);
@@ -156,8 +181,10 @@
                 }
             }
 
+            // Gets the distance between the angles
             float returnAngle = Math.Abs(angle - currAngle);
 
+            // Turns it negative if its behind or forward
             if (angle < currAngle)
             {
                 returnAngle *= -1;
@@ -166,10 +193,17 @@
             return returnAngle;
         }
 
+        /// <summary>
+        /// Converts the true rotor angle into one more easily processable for distance calculations
+        /// </summary>
+        /// <param name="angle">Raw input from rotor</param>
+        /// <returns></returns>
         private float ConvertRotorDegrees(float angle)
         {
+            // Convert from rad to degrees
             angle = MathHelper.ToDegrees(angle);
 
+            // Checks if the angle is negative and converts if so
             if (angle > 180)
             {
                 angle -= 360;
@@ -178,60 +212,97 @@
             return angle;
         }
 
+        /// <summary>
+        /// Calculates the PID for the motors
+        /// </summary>
         private void CalculateMotorPID()
         {
+            // Recalculate averages for integral gain
             CalcAverage(ref avgAzAngle, ref angleAzCount, azAngle);
             CalcAverage(ref avgVerAngle, ref angleVerCount, vertAngle);
 
-            azSpeed = PIDCalculate(azAngle, prevAzAngle, avgAzAngle);
-            verSpeed = PIDCalculate(vertAngle, prevVertAngle, avgVerAngle);
+            // Calculate the PID speeds
+            float azSpeed = PIDCalculate(azAngle, prevAzAngle, avgAzAngle);
+            float verSpeed = PIDCalculate(vertAngle, prevVertAngle, avgVerAngle);
 
+            // Input speeds to the rotor systems
+            SetMotorSpeeds(azSpeed, verSpeed);
+
+            // Save previous angles for calculating derivates
             prevAzAngle = azAngle;
             prevVertAngle = vertAngle;
         }
 
-        private void SetMotorSpeeds()
+        /// <summary>
+        /// Sets the speed of the motor speeds, for when main is activated
+        /// </summary>
+        /// <param name="azimuthSpeed">Speed for azimuth in RPM</param>
+        /// <param name="verticalSpeed">Speed for vertical in RPM</param>
+        private void SetMotorSpeeds(float azimuthSpeed, float verticalSpeed)
         {
-            MainControls.azimuth.TargetVelocityRPM = azSpeed;
-            MainControls.vertical.TargetVelocityRPM = verSpeed;
+            MainControls.azimuthRotation = azimuthSpeed;
+            MainControls.verticalRotation = verticalSpeed;
         }
 
+        /// <summary>
+        /// Adds a new number into average
+        /// </summary>
+        /// <param name="average">Average variable to be changed</param>
+        /// <param name="count">Current number of items</param>
+        /// <param name="addedAngle">Item added</param>
         private void CalcAverage(ref float average, ref long count, float addedAngle)
         {
+            // Relcaluate the old total and divide with new count
             average = (average * count) / (count + 1);
             count++;
+
+            // Add new item to average
             average += (addedAngle / count);
         }
 
+        /// <summary>
+        /// PID calculation that outputs with current difference, previous difference and average over tiem
+        /// </summary>
+        /// <param name="x">Current difference</param>
+        /// <param name="xPrev">Previous difference</param>
+        /// <param name="avgX">Average difference over time</param>
+        /// <returns></returns>
         private float PIDCalculate(float x, float xPrev, float avgX)
         {
+            // Calculate each part of PID
             float proportinal = proportionalGain * x;
             float differential = derivativeGain * (x - xPrev);
             float integral = integralGain * avgX;
 
+            // Set limiting for intergral
             if (integral > intergralAntiWindupVal)
             {
                 integral = intergralAntiWindupVal;
             }
 
+            // Combine the averages
             float combinedValue = (proportinal + integral + differential) / (proportionalGain + integralGain + derivativeGain);
 
             return combinedValue;
         }
 
+        /// <summary>
+        /// Clears class level info
+        /// </summary>
         public void ClearMovementInfo()
         {
             azAngle = 0;
-            azSpeed = 0;
             avgAzAngle = 0;
             angleAzCount = 0;
 
             vertAngle = 0;
-            verSpeed = 0;
             avgVerAngle = 0;
             angleVerCount = 0;
         }
 
+        /// <summary>
+        /// Parses out raw output from DAGGER system
+        /// </summary>
         public void ParseDAGGERInfo()
         {
             string[] DAGGERMainSplit = DAGGER.CustomData.Split('|');
@@ -271,12 +342,27 @@
             public IMyCubeBlock direction;
             public bool enabled;
 
+            // Main rotation info
+
+            /// <summary>
+            /// Rotation for azimuth in RPM
+            /// </summary>
             public float azimuthRotation { get; set; }
+
+            /// <summary>
+            /// Rotation for vertical in RPM
+            /// </summary>
             public float verticalRotation { get; set; }
 
+            /// <summary>
+            /// Initialise new control system
+            /// </summary>
+            /// <param name="azimuthIns">Azimuth controller</param>
+            /// <param name="verticalIns">Vertical controller</param>
+            /// <param name="directionalBlock">Block that holds direction for system</param>
             public void Initialise(IMyMotorStator azimuthIns, IMyMotorStator verticalIns, IMyCubeBlock directionalBlock)
             {
-                azimuthRotation = 4;
+                azimuthRotation = 0;
                 verticalRotation = 0;
 
                 azimuth = azimuthIns;
@@ -284,12 +370,19 @@
                 direction = directionalBlock;
                 enabled = false;
             }
+
+            /// <summary>
+            /// Sets the internal movement variables to true movement
+            /// </summary>
             public void SetSystemSpeed()
             {
                 azimuth.TargetVelocityRPM = azimuthRotation;
                 vertical.TargetVelocityRPM = verticalRotation;
             }
 
+            /// <summary>
+            /// Clears internal values and sets true speed
+            /// </summary>
             public void StopMovement()
             {
                 azimuthRotation = 0;
@@ -299,11 +392,24 @@
             }
         }
 
+        /// <summary>
+        /// Calculate the difference in degrees between two vectors
+        /// </summary>
+        /// <param name="a">First direction vector</param>
+        /// <param name="b">Second direction vector</param>
+        /// <returns></returns>
         public float CalcAngleBetweenVec(Vector3D a, Vector3D b)
         {
             return (float)MathHelper.ToDegrees(Math.Acos(MathHelper.Clamp(a.Dot(b) / Math.Sqrt(a.LengthSquared() * b.LengthSquared()), -1, 1)));
         }
 
+        /// <summary>
+        /// Projects a 3D vector onto a 2D vector plane/circle using two crossed vectors as its guide
+        /// </summary>
+        /// <param name="x">First cross vector</param>
+        /// <param name="y">Second cross vector</param>
+        /// <param name="projectedVector">Vector being projected onto plane</param>
+        /// <returns></returns>
         public Vector3D ProjectVectorToPlane(Vector3D x, Vector3D y, Vector3D projectedVector)
         {
             Vector3D xVec = Vector3D.ProjectOnVector(ref projectedVector, ref x);
