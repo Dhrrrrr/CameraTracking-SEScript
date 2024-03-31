@@ -222,8 +222,8 @@
             CalcAverage(ref avgVerAngle, ref angleVerCount, vertAngle);
 
             // Calculate the PID speeds
-            float azSpeed = PIDCalculate(azAngle, prevAzAngle, avgAzAngle);
-            float verSpeed = PIDCalculate(vertAngle, prevVertAngle, avgVerAngle);
+            float azSpeed = PIDCalculate(azAngle, prevAzAngle, avgAzAngle, 60);
+            float verSpeed = PIDCalculate(vertAngle, prevVertAngle, avgVerAngle, 60);
 
             // Input speeds to the rotor systems
             SetMotorSpeeds(azSpeed, verSpeed);
@@ -266,12 +266,13 @@
         /// <param name="x">Current difference</param>
         /// <param name="xPrev">Previous difference</param>
         /// <param name="avgX">Average difference over time</param>
+        /// <param name="tps">Ticks per Second, used for differentiation normalisation</param>
         /// <returns></returns>
-        private float PIDCalculate(float x, float xPrev, float avgX)
+        private float PIDCalculate(float x, float xPrev, float avgX, int tps)
         {
             // Calculate each part of PID
             float proportinal = proportionalGain * x;
-            float differential = derivativeGain * (x - xPrev);
+            float differential = derivativeGain * tps * (x - xPrev);
             float integral = integralGain * avgX;
 
             // Set limiting for intergral
