@@ -1,9 +1,11 @@
         // PID Controls
-        const float proportionalGain = 5f;
-        const float integralGain = 0.2f;
-        const float derivativeGain = 2f;
+        const float proportionalGain = 12f;
+        const float integralGain = 5f;
+        const float derivativeGain = 0f;
 
-        const float intergralAntiWindupVal = 1;
+        const float intergralAntiWindupVal = 8;
+
+        const int tickTillIntegralReset = 20;
         
 
         IMyTextPanel textPanel;
@@ -102,6 +104,9 @@
                     break;
             }
 
+            // Echo current status
+            Echo("CAM: " + MainControls.enabled.ToString());
+
             WriteTextInfo();
         }
 
@@ -112,7 +117,7 @@
         {
             // Write info into text panel
             textPanel.FontColor = Color.Blue;
-            textPanel.WriteText("Current Azimuth Speed: " + MainControls.azimuthRotation + ", Current Vertical Speed: " + MainControls.verticalRotation + ", Enabled: " + MainControls.enabled + Environment.NewLine + "Target Position: " + targettingLocation);
+            textPanel.WriteText("Current Azimuth Speed: " + MainControls.azimuthRotation + Environment.NewLine + "Current Vertical Speed: " + MainControls.verticalRotation + Environment.NewLine + "Enabled: " + MainControls.enabled + Environment.NewLine + "Target Position: " + targettingLocation);
         }
 
         /// <summary>
@@ -252,6 +257,11 @@
         /// <param name="addedAngle">Item added</param>
         private void CalcAverage(ref float average, ref long count, float addedAngle)
         {
+            // Reset ticks if too many
+            if (count > tickTillIntegralReset)
+            {
+                count = 0;
+            }
             // Relcaluate the old total and divide with new count
             average = (average * count) / (count + 1);
             count++;
@@ -272,7 +282,7 @@
         {
             // Calculate each part of PID
             float proportinal = proportionalGain * x;
-            float differential = derivativeGain * tps * (x - xPrev);
+            float differential = derivativeGain * tps * (xPrev - x);
             float integral = integralGain * avgX;
 
             // Set limiting for intergral
