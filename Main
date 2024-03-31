@@ -1,3 +1,11 @@
+        // PID Controls
+        const float proportionalGain = 0.5f;
+        const float integralGain = 0;
+        const float derivativeGain = 4;
+
+        const float intergralAntiWindupVal = 10;
+        
+
         IMyTextPanel textPanel;
         IMyProgrammableBlock DAGGER;
 
@@ -5,8 +13,15 @@
         OperationalControlStruct MainControls = new OperationalControlStruct();
         Vector3D targettingLocation;
 
+        float azSpeed = 0;
+        float verSpeed = 0;
+
         float azAngle = 0;
         float vertAngle = 0;
+
+        float prevAzAngle, prevVertAngle, avgAzAngle, avgVerAngle = 0;
+        long angleAzCount, angleVerCount = 0;
+ 
 
         bool inf = false;
 
@@ -56,7 +71,6 @@
         public void Main(string argument, UpdateType updateSource)
         {
             ParseDAGGERInfo();
-            CalculateAngles();
 
             switch (argument)
             {
@@ -64,6 +78,7 @@
 
                     if (MainControls.enabled)
                     {
+                        ClearMovementInfo();
                         MainControls.StopMovement();
                     }
 
@@ -74,6 +89,8 @@
                 default:
                     if (MainControls.enabled)
                     {
+                        CalculateAngles();
+                        CalculateMotorPID();
                         MainControls.SetSystemSpeed();
                     }
                     break;
@@ -85,7 +102,7 @@
         private void WriteTextInfo()
         {
             textPanel.FontColor = Color.Blue;
-            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation + Environment.NewLine + "Az: " + azAngle + ", Ver: " + vertAngle + ", " + inf);
+            textPanel.WriteText(MainControls.azimuthRotation + "," + MainControls.verticalRotation + "," + MainControls.enabled + Environment.NewLine + targettingLocation + Environment.NewLine + "Az: " + azSpeed + ", Ver: " + verSpeed + ", " + inf);
         }
 
         private void CalculateAngles()
@@ -161,6 +178,60 @@
             return angle;
         }
 
+        private void CalculateMotorPID()
+        {
+            CalcAverage(ref avgAzAngle, ref angleAzCount, azAngle);
+            CalcAverage(ref avgVerAngle, ref angleVerCount, vertAngle);
+
+            azSpeed = PIDCalculate(azAngle, prevAzAngle, avgAzAngle);
+            verSpeed = PIDCalculate(vertAngle, prevVertAngle, avgVerAngle);
+
+            prevAzAngle = azAngle;
+            prevVertAngle = vertAngle;
+        }
+
+        private void SetMotorSpeeds()
+        {
+            MainControls.azimuth.TargetVelocityRPM = azSpeed;
+            MainControls.vertical.TargetVelocityRPM = verSpeed;
+        }
+
+        private void CalcAverage(ref float average, ref long count, float addedAngle)
+        {
+            average = (average * count) / (count + 1);
+            count++;
+            average += (addedAngle / count);
+        }
+
+        private float PIDCalculate(float x, float xPrev, float avgX)
+        {
+            float proportinal = proportionalGain * x;
+            float differential = derivativeGain * (x - xPrev);
+            float integral = integralGain * avgX;
+
+            if (integral > intergralAntiWindupVal)
+            {
+                integral = intergralAntiWindupVal;
+            }
+
+            float combinedValue = (proportinal + integral + differential) / (proportionalGain + integralGain + derivativeGain);
+
+            return combinedValue;
+        }
+
+        public void ClearMovementInfo()
+        {
+            azAngle = 0;
+            azSpeed = 0;
+            avgAzAngle = 0;
+            angleAzCount = 0;
+
+            vertAngle = 0;
+            verSpeed = 0;
+            avgVerAngle = 0;
+            angleVerCount = 0;
+        }
+
         public void ParseDAGGERInfo()
         {
             string[] DAGGERMainSplit = DAGGER.CustomData.Split('|');
@@ -222,7 +293,7 @@
             public void StopMovement()
             {
                 azimuthRotation = 0;
-                verticalRotation = 0;
+                verticalRotation = 0;               
 
                 SetSystemSpeed();
             }
