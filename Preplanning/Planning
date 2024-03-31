@@ -10,5 +10,5 @@ Minor Features:
 
 Progress:
 #Automatic connection to DAGGER to collect its fire control information
-Get the turret to move to its target
-Get the turret to move ACCURATELY to allow for tracking of moving targets, most likely with PID style movement controls
+#Get the turret to move to its target
+#Get the turret to move ACCURATELY to allow for tracking of moving targets, most likely with PID style movement controls
