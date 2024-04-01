@@ -1,25 +1,30 @@
         // PID Controls
         const float proportionalGain = 12f;
         const float integralGain = 5f;
-        const float derivativeGain = 0f;
+        const float derivativeGain = 1f;
 
         const float intergralAntiWindupVal = 8;
 
         const int tickTillIntegralReset = 20;
-        
 
+        const string azimuthName = "Azimuth Rotor";
+        const string verticalName = "Vertical Rotor";
+        const string directionName = "Direction Block";
+
+
+        // Class level info and identifiers
         IMyTextPanel textPanel;
-        IMyProgrammableBlock DAGGER;
+        IMyProgrammableBlock controller;
+
+        const string controllerIdentifierName = "DAGGER";
+        const int TPS = 60;
 
         // Control structs
         OperationalControlStruct MainControls = new OperationalControlStruct();
         Vector3D targettingLocation;
 
-        float azAngle = 0;
-        float vertAngle = 0;
-
         // Angles for PID Controls
-        float prevAzAngle, prevVertAngle, avgAzAngle, avgVerAngle = 0;
+        float vertAngle, azAngle, prevAzAngle, prevVertAngle, avgAzAngle, avgVerAngle = 0;
         long angleAzCount, angleVerCount = 0;
  
 
@@ -28,9 +33,9 @@
         public Program()
         {
             // Collect Relevant block
-            IMyMotorStator startAzimuth = GridTerminalSystem.GetBlockWithName("Azimuth Rotor") as IMyMotorStator;
-            IMyMotorStator startVertical = GridTerminalSystem.GetBlockWithName("Vertical Rotor") as IMyMotorStator;
-            IMyCubeBlock relativeBlock = GridTerminalSystem.GetBlockWithName("Direction Block") as IMyCubeBlock;
+            IMyMotorStator startAzimuth = GridTerminalSystem.GetBlockWithName(azimuthName) as IMyMotorStator;
+            IMyMotorStator startVertical = GridTerminalSystem.GetBlockWithName(verticalName) as IMyMotorStator;
+            IMyCubeBlock relativeBlock = GridTerminalSystem.GetBlockWithName(directionName) as IMyCubeBlock;
 
             // Nullify start location
             targettingLocation = Vector3D.Zero;
@@ -56,14 +61,14 @@
             {
                 string[] splitString = block.CustomData.Split('|');
 
-                if (splitString[0] == "DAGGER")
+                if (splitString[0] == controllerIdentifierName)
                 {
-                    DAGGER = block;
+                    controller = block;
                     break;
                 }
             }
 
-            if (DAGGER == null)
+            if (controller == null)
             {
                 Echo("Failed to locate targetting system");
                 return;
@@ -75,7 +80,7 @@
         public void Main(string argument, UpdateType updateSource)
         {
             // Get info from targetting system
-            ParseDAGGERInfo();
+            ParseControllerInfo();
 
             // Take input from user
             switch (argument)
@@ -227,8 +232,8 @@
             CalcAverage(ref avgVerAngle, ref angleVerCount, vertAngle);
 
             // Calculate the PID speeds
-            float azSpeed = PIDCalculate(azAngle, prevAzAngle, avgAzAngle, 60);
-            float verSpeed = PIDCalculate(vertAngle, prevVertAngle, avgVerAngle, 60);
+            float azSpeed = PIDCalculate(azAngle, prevAzAngle, avgAzAngle, TPS);
+            float verSpeed = PIDCalculate(vertAngle, prevVertAngle, avgVerAngle, TPS);
 
             // Input speeds to the rotor systems
             SetMotorSpeeds(azSpeed, verSpeed);
@@ -263,8 +268,8 @@
                 count = 0;
             }
             // Relcaluate the old total and divide with new count
-            average = (average * count) / (count + 1);
             count++;
+            average = (average * (count - 1)) / count;
 
             // Add new item to average
             average += (addedAngle / count);
@@ -282,7 +287,7 @@
         {
             // Calculate each part of PID
             float proportinal = proportionalGain * x;
-            float differential = derivativeGain * tps * (xPrev - x);
+            float differential = derivativeGain * ((x - xPrev) * tps);
             float integral = integralGain * avgX;
 
             // Set limiting for intergral
@@ -314,9 +319,9 @@
         /// <summary>
         /// Parses out raw output from DAGGER system
         /// </summary>
-        public void ParseDAGGERInfo()
+        public void ParseControllerInfo()
         {
-            string[] DAGGERMainSplit = DAGGER.CustomData.Split('|');
+            string[] DAGGERMainSplit = controller.CustomData.Split('|');
 
             if (DAGGERMainSplit.Length == 2)
             {
