@@ -1,10 +1,9 @@
         // PID Controls
-        const float proportionalGain = 12f;
-        const float integralGain = 5f;
-        const float derivativeGain = 1f;
+        const float proportionalGain = 5.5f;
+        const float integralGain = 1.5f;
+        const float derivativeGain = 0f;
 
-        const float intergralAntiWindupVal = 8;
-
+        const float intergralAntiWindupVal = 3;
         const int tickTillIntegralReset = 20;
 
         const string azimuthName = "Azimuth Rotor";
@@ -17,7 +16,7 @@
         IMyProgrammableBlock controller;
 
         const string controllerIdentifierName = "DAGGER";
-        const int TPS = 60;
+        const int TPS = 1;
 
         // Control structs
         OperationalControlStruct MainControls = new OperationalControlStruct();
@@ -122,7 +121,13 @@
         {
             // Write info into text panel
             textPanel.FontColor = Color.Blue;
-            textPanel.WriteText("Current Azimuth Speed: " + MainControls.azimuthRotation + Environment.NewLine + "Current Vertical Speed: " + MainControls.verticalRotation + Environment.NewLine + "Enabled: " + MainControls.enabled + Environment.NewLine + "Target Position: " + targettingLocation);
+            string line = "";
+            line += "Current Azimuth Speed: " + MainControls.azimuthRotation + Environment.NewLine;
+            line += "Current Vertical Speed: " + MainControls.verticalRotation + Environment.NewLine;
+            line += "Enabled: " + MainControls.enabled + Environment.NewLine;
+            line += "Target Position: " + targettingLocation + Environment.NewLine;
+            line += "Az: " + avgAzAngle + ", Ver: " + avgVerAngle;
+            textPanel.WriteText(line);
         }
 
         /// <summary>
@@ -295,9 +300,13 @@
             {
                 integral = intergralAntiWindupVal;
             }
+            else if (integral < -intergralAntiWindupVal)
+            {
+                integral = -intergralAntiWindupVal;
+            }
 
             // Combine the averages
-            float combinedValue = (proportinal + integral + differential) / (proportionalGain + integralGain + derivativeGain);
+            float combinedValue = proportinal + integral + differential;
 
             return combinedValue;
         }
