@@ -1,9 +1,10 @@
         // PID Controls
         const float proportionalGain = 5.5f;
-        const float integralGain = 1.5f;
+        const float integralGain = 0f;
         const float derivativeGain = 0f;
 
         const float intergralAntiWindupVal = 3;
+        const float lowestAngle = 0.01f;
         const int tickTillIntegralReset = 20;
 
         const string azimuthName = "Azimuth Rotor";
@@ -203,6 +204,11 @@
             if (angle < currAngle)
             {
                 returnAngle *= -1;
+            }
+
+            if (returnAngle < lowestAngle && returnAngle > -lowestAngle)
+            {
+                returnAngle = 0;
             }
 
             return returnAngle;
