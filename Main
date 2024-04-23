@@ -1,23 +1,24 @@
         // PID Controls
-        const float proportionalGain = 5.5f;
-        const float integralGain = 0f;
-        const float derivativeGain = 0f;
+        const float proportionalGain = 2.5f;
+        const float integralGain = 0.2f;
+        const float derivativeGain = 0.05f;
 
         const float intergralAntiWindupVal = 3;
-        const float lowestAngle = 0.01f;
+        const float lowestAngle = 0f;
         const int tickTillIntegralReset = 20;
 
         const string azimuthName = "Azimuth Rotor";
         const string verticalName = "Vertical Rotor";
         const string directionName = "Direction Block";
 
-
+        const string textPanelName = "Text Panel";
+        
         // Class level info and identifiers
         IMyTextPanel textPanel;
         IMyProgrammableBlock controller;
 
         const string controllerIdentifierName = "DAGGER";
-        const int TPS = 1;
+        const int TPS = 60;
 
         // Control structs
         OperationalControlStruct MainControls = new OperationalControlStruct();
@@ -51,7 +52,7 @@
                 return;
             }
 
-            textPanel = GridTerminalSystem.GetBlockWithName("Text Panel") as IMyTextPanel;
+            textPanel = GridTerminalSystem.GetBlockWithName(textPanelName) as IMyTextPanel;
 
             // Collect targetting system
             List<IMyProgrammableBlock> progBlock = new List<IMyProgrammableBlock>();
@@ -112,7 +113,11 @@
             // Echo current status
             Echo("CAM: " + MainControls.enabled.ToString());
 
-            WriteTextInfo();
+            if (textPanel != null)
+            {
+                WriteTextInfo();
+
+            }
         }
 
         /// <summary>
@@ -180,16 +185,14 @@
             {
                 angle = CalcAngleBetweenVec(planeProjection, left);
 
-                if (left.Dot(planeProjection) < 0)
+                if (forward.Dot(planeProjection) < 0)
                 {
                     angle *= -1;
                 }
             }
             else
             {
-                Vector3D back = rotor.WorldMatrix.Backward;
-
-                angle = CalcAngleBetweenVec(planeProjection, back);
+                angle = CalcAngleBetweenVec(planeProjection, -forward);
 
                 if (left.Dot(planeProjection) < 0)
                 {
