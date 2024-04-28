@@ -1,11 +1,11 @@
         // PID Controls
         const float proportionalGain = 2.5f;
-        const float integralGain = 0.2f;
+        const float integralGain = 0.6f;
         const float derivativeGain = 0.05f;
 
         const float intergralAntiWindupVal = 3;
         const float lowestAngle = 0f;
-        const int tickTillIntegralReset = 20;
+        const int tickTillIntegralReset = 200;
 
         const string azimuthName = "Azimuth Rotor";
         const string verticalName = "Vertical Rotor";
@@ -146,8 +146,9 @@
             {
                 Vector3D direction = targettingLocation - MainControls.direction.WorldMatrix.Translation;
 
-                azAngle = CalculateDegreeDistance(MainControls.azimuth, direction);
-                vertAngle = CalculateDegreeDistance(MainControls.vertical, direction);
+                // Get angle
+                azAngle = CalculateDegreeDistance(MainControls.azimuth, MainControls.direction, direction);
+                vertAngle = CalculateDegreeDistance(MainControls.vertical, MainControls.direction, direction);
 
             }
         }
@@ -158,11 +159,13 @@
         /// <param name="rotor">Rotor to check</param>
         /// <param name="direction">Vector of direction to check</param>
         /// <returns></returns>
-        private float CalculateDegreeDistance(IMyMotorStator rotor, Vector3D direction)
+        private float CalculateDegreeDistance(IMyMotorStator rotor, IMyCubeBlock directionBlock, Vector3D direction)
         {
             // Get rotation directs
             Vector3D left = rotor.WorldMatrix.Left;
             Vector3D forward = rotor.WorldMatrix.Forward;
+
+            Vector3D forD = directionBlock.WorldMatrix.Forward;
 
             // Check if the object is a hinge
             bool isHinge = false;
@@ -175,36 +178,44 @@
 
             // Project the direction on the rotors movement plane
             Vector3D planeProjection = ProjectVectorToPlane(forward, left, direction);
+            Vector3D planeProjectionDirect = ProjectVectorToPlane(forward, left, forD);
 
-            float angle;
-            float currAngle = ConvertRotorDegrees(rotor.Angle);
 
             // Check if the object is a hinge, as they have different rotation matrixs and thus different results
             // Actual use is to get the angle, and convert it into an angle that can be more easily used for calculating distance
+            float angle = CalcAngleBetweenVec(planeProjection, left);
+            float angleD = CalcAngleBetweenVec(planeProjectionDirect, left);
+
             if (isHinge)
             {
-                angle = CalcAngleBetweenVec(planeProjection, left);
-
                 if (forward.Dot(planeProjection) < 0)
                 {
                     angle *= -1;
                 }
+
+                if (forward.Dot(planeProjectionDirect) < 0)
+                {
+                    angleD *= -1;
+                }
             }
             else
             {
-                angle = CalcAngleBetweenVec(planeProjection, -forward);
-
                 if (left.Dot(planeProjection) < 0)
                 {
                     angle *= -1;
                 }
+
+                if (left.Dot(planeProjectionDirect) < 0)
+                {
+                    angleD *= -1;
+                }
             }
 
             // Gets the distance between the angles
-            float returnAngle = Math.Abs(angle - currAngle);
+            float returnAngle = Math.Abs(angle - angleD);
 
             // Turns it negative if its behind or forward
-            if (angle < currAngle)
+            if (angle < angleD)
             {
                 returnAngle *= -1;
             }
@@ -215,25 +226,6 @@
             }
 
             return returnAngle;
-        }
-
-        /// <summary>
-        /// Converts the true rotor angle into one more easily processable for distance calculations
-        /// </summary>
-        /// <param name="angle">Raw input from rotor</param>
-        /// <returns></returns>
-        private float ConvertRotorDegrees(float angle)
-        {
-            // Convert from rad to degrees
-            angle = MathHelper.ToDegrees(angle);
-
-            // Checks if the angle is negative and converts if so
-            if (angle > 180)
-            {
-                angle -= 360;
-            }
-
-            return angle;
         }
 
         /// <summary>
