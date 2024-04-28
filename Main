@@ -144,7 +144,7 @@
             // Check if target is null
             if (targettingLocation != null)
             {
-                Vector3D direction = targettingLocation - MainControls.azimuth.WorldMatrix.Translation;
+                Vector3D direction = targettingLocation - MainControls.direction.WorldMatrix.Translation;
 
                 azAngle = CalculateDegreeDistance(MainControls.azimuth, direction);
                 vertAngle = CalculateDegreeDistance(MainControls.vertical, direction);
