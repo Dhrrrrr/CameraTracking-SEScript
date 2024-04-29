@@ -1,6 +1,6 @@
         // PID Controls
-        const float proportionalGain = 2.5f;
-        const float integralGain = 0.6f;
+        const float proportionalGain = 3.5f;
+        const float integralGain = 0.2f;
         const float derivativeGain = 0.05f;
 
         const float intergralAntiWindupVal = 3;
