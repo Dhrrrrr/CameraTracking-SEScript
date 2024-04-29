@@ -5,7 +5,7 @@
 
         const float intergralAntiWindupVal = 3;
         const float lowestAngle = 0f;
-        const int tickTillIntegralReset = 200;
+        const int tickTillIntegralReset = 10;
 
         const string azimuthName = "Azimuth Rotor";
         const string verticalName = "Vertical Rotor";
