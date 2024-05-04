@@ -82,6 +82,7 @@
         {
             // Get info from targetting system
             ParseControllerInfo();
+            CalculateAngles();
 
             // Take input from user
             switch (argument)
@@ -103,7 +104,7 @@
                     if (MainControls.enabled)
                     {
                         // Process and set movement if enabled
-                        CalculateAngles();
+                        //CalculateAngles();
                         CalculateMotorPID();
                         MainControls.SetSystemSpeed();
                     }
@@ -190,19 +191,12 @@
             // Check if angle is above or below
             if (isHinge)
             {
-                if (forward.Dot(planeProjection) > forward.Dot(planeProjectionDirect))
-                {
-                    returnAngle *= -1;
+                FigureDirection(ref returnAngle, forward, planeProjectionDirect, planeProjection, angle, angleD);
 
-                }
             }
             else
             {
-                if (left.Dot(planeProjection) > left.Dot(planeProjectionDirect))
-                {
-                    returnAngle *= -1;
-
-                }
+                FigureDirection(ref returnAngle, left, planeProjectionDirect, planeProjection, angle, angleD);
             }
 
             // Set limits for angle
@@ -213,7 +207,57 @@
 
             return returnAngle;
         }
-        
+
+        /// <summary>
+        /// Calculate the direction the rotor needs to spin to achieve the angle
+        /// </summary>
+        private void FigureDirection(ref float returnAngle, Vector3D normalZ, Vector3D direct, Vector3D final, float angleF, float angleD)
+        {
+            // Convert angles to negative form
+            if (IsPointingAway(normalZ, direct))
+            {
+                angleD *= -1;
+            }
+
+            if (IsPointingAway(normalZ, final))
+            {
+                angleF *= -1;
+            }
+
+            // Get angle distance between the two
+            double angleDist = Math.Abs(angleD - angleF);
+
+            // If the direction angle away is higher, go back
+            if (angleD < angleF)
+            {
+                returnAngle *= -1;
+            }
+
+            // If distance is greater than 180 between the two, inverse the direction as that is more efficient and less glitchy
+            if (angleDist > 180)
+            {
+                returnAngle *= -1;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a vector is pointing towards or away from a direction
+        /// </summary>
+        /// <param name="direction">Direction to check from</param>
+        /// <param name="main">Vector to check</param>
+        /// <returns></returns>
+        private bool IsPointingAway(Vector3D direction, Vector3D main)
+        {
+            double dot = direction.Dot(main);
+
+            if (dot < 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
 
         /// <summary>
         /// Calculates the PID for the motors
