@@ -1,14 +1,14 @@
-This will be a camera tracker, that will use DAGGER to hoist a camera towards the target
+This will be a camera tracker, that will use GFS to hoist a camera towards the target
 
 Features:
 Be able to use any form of camera configuration
-Automatically locate any existing version of DAGGER on the grid for ease of use
+Automatically locate any existing version of GFS on the grid for ease of use
 Be easily toggalable and quickly changeable
 
 Minor Features:
 #Configurable camera spin speed
 
 Progress:
-#Automatic connection to DAGGER to collect its fire control information
+#Automatic connection to GFS to collect its fire control information
 #Get the turret to move to its target
 #Get the turret to move ACCURATELY to allow for tracking of moving targets, most likely with PID style movement controls
