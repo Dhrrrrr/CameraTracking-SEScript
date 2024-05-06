@@ -1,6 +1,6 @@
 Program()
 {
-  Locate the DAGGER script block 
+  Locate the GFS script block 
   Collect necessary blocks I.E Camera and turret parts
 
   Set run speed
@@ -12,7 +12,7 @@ Runtime()
     Switch the mode
 
   if(CAMERA IS ENABLED)
-    Collect the targetting info from DAGGER
+    Collect the targetting info from GFS
     Calculate the angle between current camera direction on a plane relative to the HINGES
     Calculate which direction the hinges have to move
     Use PID style controls to direct the hinges and their movement towards the correct place
