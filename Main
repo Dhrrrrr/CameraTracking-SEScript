@@ -17,7 +17,7 @@
         IMyTextPanel textPanel;
         IMyProgrammableBlock controller;
 
-        const string controllerIdentifierName = "DAGGER";
+        const string controllerIdentifierName = "GFS";
         const int TPS = 60;
 
         // Control structs
@@ -182,8 +182,19 @@
 
             // Check if the object is a hinge, as they have different rotation matrixs and thus different results
             // Actual use is to get the angle, and convert it into an angle that can be more easily used for calculating distance
-            float angle = CalcAngleBetweenVec(planeProjection, forward);
-            float angleD = CalcAngleBetweenVec(planeProjectionDirect, forward); 
+            float angle;
+            float angleD;
+
+            if (isHinge)
+            {
+                angle = CalcAngleBetweenVec(planeProjection, left);
+                angleD = CalcAngleBetweenVec(planeProjectionDirect, left);
+            }
+            else
+            {
+                angle = CalcAngleBetweenVec(planeProjection, forward);
+                angleD = CalcAngleBetweenVec(planeProjectionDirect, forward);
+            }
 
             // Gets the distance between the angles
             float returnAngle = Math.Abs(angle - angleD);
@@ -358,19 +369,19 @@
         }
 
         /// <summary>
-        /// Parses out raw output from DAGGER system
+        /// Parses out raw output from GFS system
         /// </summary>
         public void ParseControllerInfo()
         {
-            string[] DAGGERMainSplit = controller.CustomData.Split('|');
+            string[] GFSMainSplit = controller.CustomData.Split('|');
 
-            if (DAGGERMainSplit.Length == 2)
+            if (GFSMainSplit.Length == 2)
             {
-                string[] DAGGERInfoSplit = DAGGERMainSplit[1].Split(',');
+                string[] GFSInfoSplit = GFSMainSplit[1].Split(',');
 
                 try
                 {
-                    string[] splitString = DAGGERInfoSplit[0].Split(':');
+                    string[] splitString = GFSInfoSplit[0].Split(':');
 
                     if (splitString.Length == 4)
                     {
