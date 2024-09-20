@@ -1,11 +1,10 @@
         // PID Controls
-        const float proportionalGain = 3.5f;
-        const float integralGain = 0.2f;
-        const float derivativeGain = 0.05f;
+        const float proportionalGain = 2f;
+        const float integralGain = 0.4f;
+        const float derivativeGain = 0.1f;
 
         const float intergralAntiWindupVal = 3;
         const float lowestAngle = 0f;
-        const int tickTillIntegralReset = 10;
 
         const string azimuthName = "Azimuth Rotor";
         const string verticalName = "Vertical Rotor";
@@ -25,8 +24,7 @@
         Vector3D targettingLocation;
 
         // Angles for PID Controls
-        float vertAngle, azAngle, prevAzAngle, prevVertAngle, avgAzAngle, avgVerAngle = 0;
-        long angleAzCount, angleVerCount = 0;
+        float vertAngle, azAngle, prevAzAngle, prevVertAngle, integralAzAngle, integralVerAngle = 0;
  
 
         bool inf = false;
@@ -133,7 +131,8 @@
             line += "Current Vertical Speed: " + MainControls.verticalRotation + Environment.NewLine;
             line += "Enabled: " + MainControls.enabled + Environment.NewLine;
             line += "Target Position: " + targettingLocation + Environment.NewLine;
-            line += "Az: " + azAngle + ", Ver: " + vertAngle;
+            line += "Az: " + azAngle + ", Ver: " + vertAngle + Environment.NewLine + Environment.NewLine;
+            line += "AZIMUTH | " + integralAzAngle + "VERTICAL | " + integralVerAngle;
             textPanel.WriteText(line);
         }
 
@@ -276,12 +275,12 @@
         private void CalculateMotorPID()
         {
             // Recalculate averages for integral gain
-            CalcAverage(ref avgAzAngle, ref angleAzCount, azAngle);
-            CalcAverage(ref avgVerAngle, ref angleVerCount, vertAngle);
+            CalcIntegral(ref integralAzAngle, azAngle, TPS);
+            CalcIntegral(ref integralVerAngle, vertAngle, TPS);
 
             // Calculate the PID speeds
-            float azSpeed = PIDCalculate(azAngle, prevAzAngle, avgAzAngle, TPS);
-            float verSpeed = PIDCalculate(vertAngle, prevVertAngle, avgVerAngle, TPS);
+            float azSpeed = PIDCalculate(azAngle, prevAzAngle, integralAzAngle, TPS);
+            float verSpeed = PIDCalculate(vertAngle, prevVertAngle, integralVerAngle, TPS);
 
             // Input speeds to the rotor systems
             SetMotorSpeeds(azSpeed, verSpeed);
@@ -303,40 +302,13 @@
         }
 
         /// <summary>
-        /// Adds a new number into average
+        /// Calculate the integral for PID
         /// </summary>
-        /// <param name="average">Average variable to be changed</param>
-        /// <param name="count">Current number of items</param>
-        /// <param name="addedAngle">Item added</param>
-        private void CalcAverage(ref float average, ref long count, float addedAngle)
+        /// <param name="integral">Average variable to be changed</param>
+        private void CalcIntegral(ref float integral, float curOffset, int TPS)
         {
-            // Reset ticks if too many
-            if (count > tickTillIntegralReset)
-            {
-                count = 0;
-            }
-            // Relcaluate the old total and divide with new count
-            count++;
-            average = (average * (count - 1)) / count;
-
-            // Add new item to average
-            average += (addedAngle / count);
-        }
-
-        /// <summary>
-        /// PID calculation that outputs with current difference, previous difference and average over tiem
-        /// </summary>
-        /// <param name="x">Current difference</param>
-        /// <param name="xPrev">Previous difference</param>
-        /// <param name="avgX">Average difference over time</param>
-        /// <param name="tps">Ticks per Second, used for differentiation normalisation</param>
-        /// <returns></returns>
-        private float PIDCalculate(float x, float xPrev, float avgX, int tps)
-        {
-            // Calculate each part of PID
-            float proportinal = proportionalGain * x;
-            float differential = derivativeGain * ((x - xPrev) * tps);
-            float integral = integralGain * avgX;
+            // Add change from current offset
+            integral += curOffset / TPS;
 
             // Set limiting for intergral
             if (integral > intergralAntiWindupVal)
@@ -347,6 +319,22 @@
             {
                 integral = -intergralAntiWindupVal;
             }
+        }
+
+        /// <summary>
+        /// PID calculation that outputs with current difference, previous difference and average over tiem
+        /// </summary>
+        /// <param name="x">Current difference</param>
+        /// <param name="xPrev">Previous difference</param>
+        /// <param name="integralX">Average difference over time</param>
+        /// <param name="tps">Ticks per Second, used for differentiation normalisation</param>
+        /// <returns></returns>
+        private float PIDCalculate(float x, float xPrev, float integralX, int tps)
+        {
+            // Calculate each part of PID
+            float proportinal = proportionalGain * x;
+            float differential = derivativeGain * ((x - xPrev) * tps);
+            float integral = integralGain * integralX;
 
             // Combine the averages
             float combinedValue = proportinal + integral + differential;
@@ -360,12 +348,10 @@
         public void ClearMovementInfo()
         {
             azAngle = 0;
-            avgAzAngle = 0;
-            angleAzCount = 0;
+            integralAzAngle = 0;
 
             vertAngle = 0;
-            avgVerAngle = 0;
-            angleVerCount = 0;
+            integralVerAngle = 0;
         }
 
         /// <summary>
